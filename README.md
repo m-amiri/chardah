@@ -1,4 +1,4 @@
-# Chardah
+# 🕑 Chardah
 
 > Async job-based LinkedIn profile scorer with 8-bit UI
 
