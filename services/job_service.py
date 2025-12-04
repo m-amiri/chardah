@@ -86,20 +86,11 @@ class JobService:
             # Step 1: Crawl LinkedIn profile
             profile_data = self.crawler_service.crawl(job_data["linkedin_account"])
 
-            # Step 2: Run model prediction
+            # Step 2: Run model prediction (includes raw_profile in explanation)
             model_result = self.model_service.predict(profile_data)
 
-            # Step 3: Combine results
-            final_result = {
-                "name": job_data["name"],
-                "cell_number": job_data["cell_number"],
-                "linkedin_account": job_data["linkedin_account"],
-                "profile": profile_data,
-                "scoring": model_result
-            }
-
-            # Update job as complete
-            self.job_store.update_job_status(job_id, "complete", result=final_result)
+            # Update job as complete with model result directly
+            self.job_store.update_job_status(job_id, "complete", result=model_result)
             logger.info(f"Job completed successfully: {job_id}")
 
         except Exception as e:
