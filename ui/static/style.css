@@ -112,3 +112,55 @@ input[type="text"], input[type="url"]{
   color:var(--muted);
   margin-top:8px;
 }
+
+/**/
+
+.gauge-container {
+    position: relative;
+    width: 180px;       /* اندازه مناسب برای موبایل و وب */
+    height: 110px;       /* نیم دایره */
+    margin: 0 auto;
+}
+
+.gauge-bg {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+/* Needle */
+.needle {
+    position: absolute;
+    width: 4px;
+    height: 50px;
+    background: #ffc44d;
+    bottom: 20%;
+    left: 50%;
+    transform-origin: bottom center;
+    transform: rotate(-80deg);
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 2px #ffffff;
+}
+
+/* حرکت پله‌ای 8-bit */
+@keyframes pixel-oscillate {
+    0%   { transform: translateX(-50%) rotate(-20deg); }
+    25%  { transform: translateX(-50%) rotate(-10deg); }
+    50%  { transform: translateX(-50%) rotate(-25deg); }
+    75%  { transform: translateX(-50%) rotate(-12deg); }
+    100% { transform: translateX(-50%) rotate(-20deg); }
+}
+
+/* افکت لرزش 1px */
+@keyframes pixel-shake {
+    0%   { margin-left: 0px; }
+    50%  { margin-left: 1px; }
+    100% { margin-left: 0px; }
+}
+
+/* کلاس فعال‌سازی لودینگ */
+.gauge-loading {
+    animation: 
+        pixel-oscillate 0.35s steps(2) infinite,
+        pixel-shake 0.12s steps(2) infinite;
+}

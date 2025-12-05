@@ -73,7 +73,22 @@ frm.addEventListener('submit', async (e) => {
       return;
     }
 
+   
     const data = await resp.json();
+
+// ---- نمایش grade و score_0_1000 در باکس ----
+  const score = data?.result?.score_0_1000;
+  const grade = data?.result?.grade;
+
+  if (score !== undefined && grade !== undefined) {
+    const resultBox = document.getElementById("resultBox");
+    const resultText = document.getElementById("resultText");
+  
+  resultText.textContent = `Grade: ${grade} | Score: ${score}`;
+  resultBox.style.display = "block"; // نمایش باکس
+}
+
+
     // attempt to extract job id (many APIs return id or job_id)
     const jobId = data.job_id || data.id || data.request_id || data.jobId;
     if (!jobId) {
@@ -180,3 +195,64 @@ function stopPollingBecause(reason) {
   cancelBtn.disabled = true;
   appendLog("Stopped polling: " + reason);
 }
+
+
+let loadingTimer = null;
+let loadingAngle = -80;
+let loadingDir = 1;
+
+function startLoadingNeedle() {
+    const needle = document.getElementById("needle");
+    if (!needle) {
+        console.error("NEEDLE NOT FOUND");
+        return;
+    }
+
+    // اگر از قبل در حال اجرا بود، دوباره ست نکن
+    if (loadingTimer !== null) return;
+
+    loadingTimer = setInterval(() => {
+        loadingAngle += loadingDir * 4;
+
+        if (loadingAngle > 80 || loadingAngle < -80) {
+            loadingDir *= -1;
+        }
+
+        needle.style.transform =
+            `translateX(-50%) rotate(${loadingAngle}deg)`;
+
+    }, 120);
+}
+
+function stopLoadingNeedle() {
+    if (loadingTimer !== null) {
+        clearInterval(loadingTimer);
+        loadingTimer = null;
+    }
+
+    // ریست عقربه به موقعیت اولیه
+    const needle = document.getElementById("needle");
+    if (needle) {
+        needle.style.transform = `translateX(-50%) rotate(-80deg)`;
+    }
+
+    loadingAngle = -80;
+    loadingDir = 1;
+}
+
+// ------ اتصال به دکمه ------
+
+// وقتی کاربر روی دکمه کلیک کرد، انیمیشن شروع شود
+document.getElementById("submitBtn").addEventListener("click", () => {
+    startLoadingNeedle();
+    setTimeout(() => {
+    stopLoadingNeedle();   // توقف خودکار بعد از 20 ثانیه
+}, 20000);
+    // اینجا درخواست API یا عملیات اصلی‌ات را صدا بزن
+    // مثال:
+    // fetch(...).then(() => stopLoadingNeedle());
+});
+document.getElementById("cancelBtn").addEventListener("click",()=>{
+   stopLoadingNeedle();
+});
+

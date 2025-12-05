@@ -24,22 +24,44 @@
         <input id="name" name="name" type="text" maxlength="40" placeholder="Your name (letters only)" required>
 
         <label>Cell Number</label>
-        <input id="cell_number" name="cell_number" type="text" maxlength="15" placeholder="9127638825 (10-15 digits)" required>
+        <input id="cell_number" name="cell_number" type="text" maxlength="15" placeholder="9127638825 (10 digits)" required>
 
         <label>LinkedIn</label>
         <input id="linkedin_account" name="linkedin_account" type="url" placeholder="https://www.linkedin.com/in/yourid" required>
 
         <div class="row">
-          <button id="submitBtn" type="submit" class="btn">POST</button>
+          <button id="submitBtn" type="submit" class="btn">Inquiry</button>
           <button id="cancelBtn" type="button" class="btn secondary" disabled>CANCEL</button>
         </div>
       </form>
     </div>
 
+     <div class="gauge-container">
+    <img src="/static/images/gauage-1.png" class="gauge-bg">
+    <div id="needle" class="needle"></div>
+    </div>
+
+
+    <div class="gauge-wrapper">
+    <div id="needle"></div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+
+    <div class="card" id="resultBox" style="display:none; margin-top:10px;">
+  <strong>Result:</strong>
+  <div id="resultText">Waiting for backend...</div>
+  </div>
+
+
+
+
+
     <div class="status card" id="statusCard">
       <div id="statusText">Idle — fill form and POST</div>
       <div id="log"></div>
     </div>
+
 
     <footer class="footer">Polling interval: <strong>20s</strong> until completed or failed</footer>
   </main>
