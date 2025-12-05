@@ -12,8 +12,22 @@ python app.py
 export FLASK_ENV=development
 export MAX_WORKERS=4
 export LOG_LEVEL=INFO
+export RAPIDAPI_KEY=your_rapidapi_key
+export MODEL_API_URL=http://localhost:8000/score
 python app.py
 ```
+
+## External Dependencies
+
+The application requires two external services:
+
+1. **RapidAPI LinkedIn Scraper** - `https://fresh-linkedin-profile-data.p.rapidapi.com/enrich-lead`
+   - API key configured via `RAPIDAPI_KEY` environment variable
+   - Default key in config (for development only)
+
+2. **ML Model Service** - `http://localhost:8000/score`
+   - Scoring API endpoint configured via `MODEL_API_URL`
+   - Must be running separately before starting the app
 
 ## Architecture Overview
 
@@ -36,8 +50,9 @@ The app uses Flask's application factory in `app.py`:
    - Creates job in JobStore with "inprogress" status
    - Submits to JobRunner (ThreadPoolExecutor)
    - Background execution:
-     - Crawls LinkedIn (dummy service)
-     - Runs ML model (dummy service)
+     - Scrapes LinkedIn profile via RapidAPI
+     - Maps profile data to model input format
+     - Calls ML model service API for scoring
      - Updates JobStore status to "complete" or "failed"
 
 3. **GET /job/<id>** → polls job status
@@ -50,7 +65,8 @@ The app uses Flask's application factory in `app.py`:
 ```
 app.py (factory)
   → creates: JobStore, JobRunner
-  → creates: LinkedInCrawlerService, ModelService
+  → creates: LinkedInScraperService (with RapidAPI credentials)
+  → creates: ModelService (with model API URL)
   → creates: JobService (injected with above)
   → creates: controller (injected with JobService)
 ```
@@ -90,8 +106,50 @@ Jobs transition: `inprogress` → `complete` OR `failed`
 - Status stored in `Job` dataclass (in-memory, not persisted)
 - No database → jobs lost on restart
 
-## Dummy Services
+## External Services Integration
 
-Both `LinkedInCrawlerService` and `ModelService` are stubs that return fake data:
-- Crawler: returns mock profile with random work/education
-- Model: returns random score (0-1), label (0/1), and explanation
+### LinkedIn Scraper Service
+
+`LinkedInScraperService` integrates with RapidAPI to fetch real LinkedIn profile data:
+- Endpoint: `https://fresh-linkedin-profile-data.p.rapidapi.com/enrich-lead`
+- Returns structured profile data including:
+  - Personal info (name, headline, location)
+  - Work experience with company details
+  - Education history
+  - Connection count
+- Maps raw API response to `LinkedInProfile` dataclass
+- Transforms profile into model input format
+
+### Model Service
+
+`ModelService` calls external ML API for profile scoring:
+- Endpoint: `http://localhost:8000/score` (configurable)
+- Input format:
+  ```json
+  {
+    "username": "string",
+    "connections": 500,
+    "worked_at": [
+      {
+        "company_name": "string",
+        "staff_count_range": "string",
+        "company_industry": "string",
+        "title": "string",
+        "start": "YYYY-MM-DD",
+        "end": "YYYY-MM-DD" or null,
+        "years": int
+      }
+    ],
+    "studied_at": [
+      {
+        "school_name": "string",
+        "degree_level": "string",
+        "field_of_study": "string",
+        "start": "YYYY-MM-DD",
+        "end": "YYYY-MM-DD"
+      }
+    ]
+  }
+  ```
+- Returns score, label, grade, and detailed explanation
+- Response includes raw profile data in explanation field

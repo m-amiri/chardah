@@ -5,7 +5,7 @@ import logging
 from flask import Flask, render_template
 from config import get_config
 from core import JobStore, JobRunner
-from services import LinkedInCrawlerService, ModelService, JobService
+from services import LinkedInScraperService, ModelService, JobService
 from controllers import job_bp, init_controller
 
 
@@ -43,12 +43,17 @@ def create_app(config_name: str = None) -> Flask:
     app.job_runner = job_runner
 
     # Initialize services
-    crawler_service = LinkedInCrawlerService()
-    model_service = ModelService()
+    scraper_service = LinkedInScraperService(
+        api_key=config.RAPIDAPI_KEY,
+        api_host=config.RAPIDAPI_HOST
+    )
+    model_service = ModelService(
+        model_api_url=config.MODEL_API_URL
+    )
     job_service = JobService(
         job_store=job_store,
         job_runner=job_runner,
-        crawler_service=crawler_service,
+        scraper_service=scraper_service,
         model_service=model_service
     )
 

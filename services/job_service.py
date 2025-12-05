@@ -5,7 +5,7 @@ import logging
 from typing import Dict
 from core.job_store import JobStore
 from core.job_runner import JobRunner
-from services.linkedin_crawler_service import LinkedInCrawlerService
+from services.linkedin_scraper_service import LinkedInScraperService
 from services.model_service import ModelService
 
 logger = logging.getLogger(__name__)
@@ -21,12 +21,12 @@ class JobService:
         self,
         job_store: JobStore,
         job_runner: JobRunner,
-        crawler_service: LinkedInCrawlerService,
+        scraper_service: LinkedInScraperService,
         model_service: ModelService
     ):
         self.job_store = job_store
         self.job_runner = job_runner
-        self.crawler_service = crawler_service
+        self.scraper_service = scraper_service
         self.model_service = model_service
 
     def create_and_execute_job(self, job_id: str, job_data: Dict) -> str:
@@ -83,11 +83,14 @@ class JobService:
         try:
             logger.info(f"Starting job execution: {job_id}")
 
-            # Step 1: Crawl LinkedIn profile
-            profile_data = self.crawler_service.crawl(job_data["linkedin_account"])
+            # Step 1: Scrape LinkedIn profile using RapidAPI
+            linkedin_profile = self.scraper_service.scrape(job_data["linkedin_account"])
 
-            # Step 2: Run model prediction (includes raw_profile in explanation)
-            model_result = self.model_service.predict(profile_data)
+            # Step 2: Map LinkedIn profile to model input format
+            model_input = self.scraper_service.map_to_model_input(linkedin_profile)
+
+            # Step 3: Run model prediction (includes raw_profile in explanation)
+            model_result = self.model_service.predict(model_input)
 
             # Update job as complete with model result directly
             self.job_store.update_job_status(job_id, "complete", result=model_result)

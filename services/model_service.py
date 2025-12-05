@@ -1,9 +1,8 @@
 """
-Model service for scoring (dummy implementation).
+Model service for scoring using external ML API.
 """
-import random
-import time
 import logging
+import requests
 from typing import Dict
 
 logger = logging.getLogger(__name__)
@@ -11,78 +10,58 @@ logger = logging.getLogger(__name__)
 
 class ModelService:
     """
-    Dummy ML model service for scoring LinkedIn profiles.
+    ML model service for scoring LinkedIn profiles via HTTP API.
     Follows Single Responsibility - only handles model inference.
     """
+
+    def __init__(self, model_api_url: str):
+        """
+        Initialize the model service.
+
+        Args:
+            model_api_url: URL of the model scoring API endpoint
+        """
+        self.model_api_url = model_api_url
 
     def predict(self, profile_data: Dict) -> Dict:
         """
         Generate a scoring prediction based on profile data.
 
         Args:
-            profile_data: LinkedIn profile data
+            profile_data: LinkedIn profile data in the format:
+                {
+                    "username": str,
+                    "connections": int,
+                    "worked_at": List[Dict],
+                    "studied_at": List[Dict]
+                }
 
         Returns:
             Dict containing score, label, grade, and detailed explanation
+
+        Raises:
+            Exception: If API request fails or returns invalid data
         """
         logger.info(f"Running model prediction for: {profile_data.get('username', 'unknown')}")
 
-        # Simulate model inference delay
-        time.sleep(0.3)
-
-        # Generate random score (0.0 - 1.0)
-        score = round(random.uniform(0.5, 1.0), 2)
-        label = 1 if score > 0.7 else 0
-
-        # Random score_0_1000 (0 - 1000)
-        score_0_1000 = random.randint(0, 1000)
-
-        # Random grade (A, B, C, D, E)
-        grade = random.choice(['A', 'B', 'C', 'D', 'E'])
-
-        # Generate random feature scores
-        work_score = round(random.uniform(5.0, 15.0), 1)
-        edu_score = round(random.uniform(0.5, 3.0), 1)
-        degree = round(random.uniform(100.0, 500.0), 1)
-        total_score = round(work_score + edu_score, 1)
-        pagerank = round(random.uniform(0.0, 1.0), 2)
-        clustering = round(random.uniform(0.0, 1.0), 2)
-        total_years_experience = round(random.uniform(1.0, 15.0), 1)
-        max_company_size_score = round(random.uniform(1.0, 5.0), 1)
-
-        # Normalized features (0.0 - 1.0)
-        norm_work = round(random.uniform(0.5, 1.0), 3)
-        norm_edu = round(random.uniform(0.3, 1.0), 3)
-        norm_degree = round(random.uniform(0.5, 1.0), 3)
-
-        # Random logits for model output
-        logit_1 = round(random.uniform(50.0, 100.0), 2)
-        logit_2 = round(random.uniform(-100.0, -20.0), 2)
-
-        return {
-            "username": profile_data.get("username", "unknown"),
-            "score": score,
-            "label": label,
-            "grade": grade,
-            "score_0_1000": score_0_1000,
-            "explanation": {
-                "features": {
-                    "work_score": work_score,
-                    "edu_score": edu_score,
-                    "degree": degree,
-                    "total_score": total_score,
-                    "pagerank": pagerank,
-                    "clustering": clustering,
-                    "total_years_experience": total_years_experience,
-                    "max_company_size_score": max_company_size_score
-                },
-                "normalized_features": {
-                    "norm_work": norm_work,
-                    "norm_edu": norm_edu,
-                    "norm_degree": norm_degree
-                },
-                "raw_profile": profile_data,
-                "model": "mlp_baseline",
-                "logits": [logit_1, logit_2]
-            }
+        headers = {
+            "content-type": "application/json"
         }
+
+        try:
+            response = requests.post(
+                self.model_api_url,
+                json=profile_data,
+                headers=headers,
+                timeout=60
+            )
+            response.raise_for_status()
+
+            result = response.json()
+
+            logger.info(f"Model prediction successful for: {profile_data.get('username', 'unknown')}, score: {result.get('score')}")
+            return result
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get model prediction: {str(e)}", exc_info=True)
+            raise Exception(f"Model prediction failed: {str(e)}")

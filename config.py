@@ -21,6 +21,13 @@ class Config:
     # Logging
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
+    # RapidAPI settings for LinkedIn scraper
+    RAPIDAPI_KEY = os.getenv('RAPIDAPI_KEY', '79ed527d4dmsh4cb995852b24aaep1a7e21jsn6249410b641b')
+    RAPIDAPI_HOST = os.getenv('RAPIDAPI_HOST', 'fresh-linkedin-profile-data.p.rapidapi.com')
+
+    # Model service settings
+    MODEL_API_URL = os.getenv('MODEL_API_URL', 'http://localhost:8000/score')
+
 
 class DevelopmentConfig(Config):
     """Development configuration."""
