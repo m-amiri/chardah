@@ -21,10 +21,32 @@ const log = document.getElementById('log');
 let pollTimer = null;
 let currentJobId = null;
 
-function appendLog(msg) {
-  const p = document.createElement('div');
-  p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-  log.prepend(p);
+function appendLog(msg, jsonData = null) {
+  const container = document.createElement('div');
+  container.style.marginBottom = '8px';
+
+  const timestamp = document.createElement('div');
+  timestamp.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  timestamp.style.color = 'var(--accent)';
+  container.appendChild(timestamp);
+
+  if (jsonData) {
+    const pre = document.createElement('pre');
+    pre.style.margin = '4px 0 0 0';
+    pre.style.padding = '8px';
+    pre.style.background = 'rgba(0,0,0,0.4)';
+    pre.style.border = '1px solid rgba(255,204,51,0.2)';
+    pre.style.borderRadius = '3px';
+    pre.style.fontSize = '11px';
+    pre.style.overflow = 'auto';
+    pre.style.maxHeight = '300px';
+    pre.style.color = '#9aa7c7';
+    pre.style.lineHeight = '1.4';
+    pre.textContent = JSON.stringify(jsonData, null, 2);
+    container.appendChild(pre);
+  }
+
+  log.prepend(container);
 }
 
 function setStatus(s) {
@@ -73,21 +95,9 @@ frm.addEventListener('submit', async (e) => {
       return;
     }
 
-   
+
     const data = await resp.json();
-
-// ---- نمایش grade و score_0_1000 در باکس ----
-  const score = data?.result?.score_0_1000;
-  const grade = data?.result?.grade;
-
-  if (score !== undefined && grade !== undefined) {
-    const resultBox = document.getElementById("resultBox");
-    const resultText = document.getElementById("resultText");
-  
-  resultText.textContent = `Grade: ${grade} | Score: ${score}`;
-  resultBox.style.display = "block"; // نمایش باکس
-}
-
+    appendLog("POST response:", data);
 
     // attempt to extract job id (many APIs return id or job_id)
     const jobId = data.job_id || data.id || data.request_id || data.jobId;
@@ -99,7 +109,7 @@ frm.addEventListener('submit', async (e) => {
         appendLog("Final state: " + data.status);
       } else {
         setStatus("POST succeeded but no job id returned");
-        appendLog("Response JSON: " + JSON.stringify(data));
+        appendLog("No job_id found in response");
       }
       submitBtn.disabled = false;
       cancelBtn.disabled = true;
@@ -109,6 +119,10 @@ frm.addEventListener('submit', async (e) => {
     currentJobId = jobId;
     appendLog("Received job id: " + currentJobId);
     setStatus("Polling for status... (job " + currentJobId + ")");
+
+    // Set loading state (placeholders)
+    setLoadingState();
+    startLoadingNeedle();
 
     // start polling
     pollStatus();
@@ -133,7 +147,37 @@ cancelBtn.addEventListener('click', () => {
   appendLog("Polling cancelled");
   submitBtn.disabled = false;
   cancelBtn.disabled = true;
+  setLoadingState();
 });
+
+// Helper functions for gauge and display management
+function setLoadingState() {
+  const gradeDisplay = document.getElementById('gradeDisplay');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  if (gradeDisplay) gradeDisplay.textContent = 'Grade: —';
+  if (scoreDisplay) scoreDisplay.textContent = 'Score: —';
+  stopLoadingNeedle();
+}
+
+function updateGauge(score_0_1000) {
+  // Map score from 0-1000 to needle angle -80 to 80 degrees
+  const minAngle = -80;
+  const maxAngle = 80;
+  const angle = minAngle + (score_0_1000 / 1000) * (maxAngle - minAngle);
+
+  const needle = document.getElementById('needle');
+  if (needle) {
+    needle.style.transition = 'transform 1.5s ease-out';
+    needle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+  }
+}
+
+function updateResults(grade, score_1000) {
+  const gradeDisplay = document.getElementById('gradeDisplay');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  if (gradeDisplay) gradeDisplay.textContent = `Grade: ${grade}`;
+  if (scoreDisplay) scoreDisplay.textContent = `Score: ${score_1000}`;
+}
 
 async function pollStatus() {
   if (!currentJobId) return;
@@ -152,7 +196,7 @@ async function pollStatus() {
     }
     const data = await resp.json();
     const status = data.status || data.state || null;
-    appendLog("Status response: " + JSON.stringify(data));
+    appendLog("Status response:", data);
     if (!status) {
       // cannot find status field — treat as pending for now
       setStatus("Waiting (no status field found)");
@@ -160,17 +204,33 @@ async function pollStatus() {
     }
     if (status.toLowerCase() === "pending" || status.toLowerCase() === "in_progress" || status.toLowerCase() === "inprogress") {
       setStatus("Pending... (job " + currentJobId + ")");
+      // Keep showing loading state with placeholders
       return;
     }
     if (status.toLowerCase() === "completed" || status.toLowerCase() === "complete" || status.toLowerCase() === "success" ) {
       setStatus("Completed 🎉");
-      appendLog("Job completed");
+
+      // Extract grade and score from result
+      const result = data.result || {};
+      const grade = result.grade || '—';
+      const score_0_1000 = result.score_0_1000 || 0;
+
+      // Log the complete result
+      appendLog("Job completed - Result:", result);
+
+      // Update gauge and displays
+      stopLoadingNeedle();
+      updateGauge(score_0_1000);
+      updateResults(grade, score_0_1000);
+
       stopPollingBecause("completed");
       return;
     }
     if (status.toLowerCase() === "failed" || status.toLowerCase() === "error") {
       setStatus("Failed ❌");
-      appendLog("Job failed");
+      const errorInfo = data.error || data.message || "No error details provided";
+      appendLog("Job failed:", { error: errorInfo, full_response: data });
+      setLoadingState();
       stopPollingBecause("failed");
       return;
     }
@@ -239,20 +299,4 @@ function stopLoadingNeedle() {
     loadingAngle = -80;
     loadingDir = 1;
 }
-
-// ------ اتصال به دکمه ------
-
-// وقتی کاربر روی دکمه کلیک کرد، انیمیشن شروع شود
-document.getElementById("submitBtn").addEventListener("click", () => {
-    startLoadingNeedle();
-    setTimeout(() => {
-    stopLoadingNeedle();   // توقف خودکار بعد از 20 ثانیه
-}, 20000);
-    // اینجا درخواست API یا عملیات اصلی‌ات را صدا بزن
-    // مثال:
-    // fetch(...).then(() => stopLoadingNeedle());
-});
-document.getElementById("cancelBtn").addEventListener("click",()=>{
-   stopLoadingNeedle();
-});
 
